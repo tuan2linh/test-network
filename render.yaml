@@ -6,6 +6,6 @@ services:
     startCommand: bash start.sh
     envVars:
       - key: PORT
-        value: 22236
+        value: 10000     # Đổi port thành 10000
       - key: HOST
         value: 0.0.0.0

@@ -118,8 +118,8 @@ class Tracker:
         self.torrents[info_hash].append({'peer_id': peer_id, 'ip': ip, 'port': port, 'progress': progress})
 
 if __name__ == "__main__":
-    default_ip = os.getenv('HOST', '127.0.0.1')
-    port = int(os.getenv('PORT', 22236))
+    default_ip = os.getenv('HOST', '127.0.0.1') 
+    port = int(os.getenv('PORT', 10000))  # Đổi default port thành 10000
 
     tracker = Tracker(default_ip, port)
     tracker_thread = Thread(target=tracker.start)

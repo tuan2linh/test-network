@@ -194,6 +194,8 @@ class Peer:
             data = self.create_request(info_hash=info_hash, left=total_length)
         
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                # Thêm timeout để tránh treo
+                sock.settimeout(10)  
                 sock.connect(resolve(torrent.metainfo['announce']))
                 send(sock, data)
 

@@ -4,7 +4,8 @@ import socket
 import json
 import base64
 
-DEFAULT_BUFFER_SIZE = 1*1024 # 1KB
+# Tăng buffer size lên để xử lý độ trễ tốt hơn
+DEFAULT_BUFFER_SIZE = 8*1024  # Tăng từ 1KB lên 8KB
 
 def encode_binary_data(data):
     '''Recursively encode binary data to be JSON serializable'''
@@ -28,19 +29,29 @@ def decode_binary_data(data):
 
 def send(sock: socket.socket, data, is_binary=False):
     if not is_binary:
-        encoded_data = encode_binary_data(data)
-        data_bytes = json.dumps(encoded_data).encode('utf-8')
-        sock.send(data_bytes)
+        try:
+            encoded_data = encode_binary_data(data)
+            data_bytes = json.dumps(encoded_data).encode('utf-8')
+            # Thêm timeout khi gửi
+            sock.settimeout(10)
+            sock.send(data_bytes)
+        except socket.timeout:
+            raise Exception("Send timeout")
     else:
         sock.send(data)
 
 def recv(sock: socket.socket, is_binary=False, buffer_size=DEFAULT_BUFFER_SIZE):
-    data = sock.recv(buffer_size)
-    if not is_binary:
-        data_dict = json.loads(data.decode('utf-8'))
-        decoded_data = decode_binary_data(data_dict)
-        return decoded_data
-    return data
+    try:
+        # Thêm timeout khi nhận
+        sock.settimeout(10)
+        data = sock.recv(buffer_size)
+        if not is_binary:
+            data_dict = json.loads(data.decode('utf-8'))
+            decoded_data = decode_binary_data(data_dict)
+            return decoded_data
+        return data
+    except socket.timeout:
+        raise Exception("Receive timeout")
 
 
 # Message types for communication between peers
