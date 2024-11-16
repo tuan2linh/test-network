@@ -1,5 +1,5 @@
 bcoding==1.5
 torf==4.2.7
-bitarray==3.0.0
+bitarray==2.8.1
 pymongo==4.6.1
 dnspython==2.4.2

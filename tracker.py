@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Thread
 import hashlib
 import random
+import os
 
 from utils.message import send, recv
 
@@ -117,8 +118,8 @@ class Tracker:
         self.torrents[info_hash].append({'peer_id': peer_id, 'ip': ip, 'port': port, 'progress': progress})
 
 if __name__ == "__main__":
-    default_ip = '127.0.0.1'
-    port = 22236
+    default_ip = os.getenv('HOST', '127.0.0.1')
+    port = int(os.getenv('PORT', 22236))
 
     tracker = Tracker(default_ip, port)
     tracker_thread = Thread(target=tracker.start)
@@ -131,6 +132,11 @@ if __name__ == "__main__":
                 tracker.stop()
                 tracker_thread.join()
                 break
+    except KeyboardInterrupt:
+        print("\nShutting down tracker...")
+        tracker.stop()
+        tracker_thread.join()
     except Exception as e:
+        print(f"Error: {e}")
         tracker.stop()
         tracker_thread.join()

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: bittorrent-tracker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh
+    envVars:
+      - key: PORT
+        value: 22236
+      - key: HOST
+        value: 0.0.0.0
