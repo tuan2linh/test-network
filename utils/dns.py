@@ -1,7 +1,7 @@
 import threading
 
 dns_records = {
-    "http://127.0.0.1:22236/announce": ("10.220.26.40", 10000),  # Sửa port thành 10000
+    "http://127.0.0.1:22236/announce": ("10.220.133.0", 10000),  # Sửa port thành 10000
 }
 
 lock = threading.Lock()

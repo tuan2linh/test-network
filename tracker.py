@@ -1,9 +1,11 @@
 import socket
-from concurrent.futures import ThreadPoolExecutor
-from threading import Thread
+from concurrent.futures import ThreadPoolExecutor 
+from threading import Thread, Event
 import hashlib
 import random
 import os
+import sys
+import signal
 
 from utils.message import send, recv
 
@@ -28,7 +30,8 @@ class Tracker:
         self.torrents = {}
         self.socket = None
         self.max_workers = max_workers
-        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        self.stop_event = Event()
+        self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="tracker")
         
         self.is_running = False
 
@@ -38,17 +41,28 @@ class Tracker:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.bind((self.ip, self.port))
                 sock.listen(self.max_workers)
+                sock.settimeout(1.0)  # Add timeout to allow checking stop_event
                 print(f"Listening on: {self.ip}:{self.port}")
 
-                while self.is_running:
-                    conn, addr = sock.accept()
-                    self.executor.submit(self.handle_request, conn, addr)
+                while not self.stop_event.is_set():
+                    try:
+                        conn, addr = sock.accept()
+                        if not self.executor._shutdown:
+                            self.executor.submit(self.handle_request, conn, addr)
+                    except socket.timeout:
+                        continue
+                    except Exception as e:
+                        if not self.stop_event.is_set():
+                            print(f"Error accepting connection: {e}")
         except Exception as e:
-            print("Error: ", e)
+            if not self.stop_event.is_set():
+                print("Error: ", e)
             
     def stop(self):
+        print("\nShutting down tracker...")
+        self.stop_event.set()
+        self.executor.shutdown(wait=True)
         self.is_running = False
-        self.executor.shutdown(wait=False)
 
     def handle_request(self, conn, addr):
         try:
@@ -123,26 +137,37 @@ if __name__ == "__main__":
     is_production = os.getenv('ENVIRONMENT') == 'production'
 
     tracker = Tracker(default_ip, port)
-    tracker_thread = Thread(target=tracker.start)
+    tracker_thread = Thread(target=tracker.start, name="tracker-main")
     tracker_thread.start()
+
+    def signal_handler(signum, frame):
+        print("\nReceived signal to shutdown...")
+        tracker.stop()
+        tracker_thread.join()
+        sys.exit(0)
+
+    # Register signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
     
     try:
         if is_production:
-            # Trong môi trường production (Render), chỉ chạy tracker
-            tracker_thread.join()
+            # In production, just wait for signals
+            signal.pause()
         else:
-            # Trong môi trường development, cho phép nhập lệnh
-            while True:
-                cmd = input("Enter command: ")
-                if cmd == "stop":
-                    tracker.stop()
-                    tracker_thread.join()
+            # In development, allow command input
+            while not tracker.stop_event.is_set():
+                try:
+                    cmd = input()
+                    if cmd.strip().lower() == "stop":
+                        tracker.stop()
+                        break
+                except EOFError:
                     break
-    except KeyboardInterrupt:
-        print("\nShutting down tracker...")
-        tracker.stop()
-        tracker_thread.join()
-    except Exception as e:
-        print(f"Error: {e}")
-        tracker.stop()
-        tracker_thread.join()
+                except KeyboardInterrupt:
+                    break
+    finally:
+        if tracker.is_running:
+            tracker.stop()
+        if tracker_thread.is_alive():
+            tracker_thread.join()
