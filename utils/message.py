@@ -4,7 +4,7 @@ import socket
 import json
 import base64
 
-# Tăng buffer size lên để xử lý độ trễ tốt hơn
+TIMEOUT = 90  # Tăng timeout lên 90 giây
 DEFAULT_BUFFER_SIZE = 8*1024  # Tăng từ 1KB lên 8KB
 
 def encode_binary_data(data):
@@ -33,17 +33,17 @@ def send(sock: socket.socket, data, is_binary=False):
             encoded_data = encode_binary_data(data)
             data_bytes = json.dumps(encoded_data).encode('utf-8')
             # Thêm timeout khi gửi
-            sock.settimeout(10)
+            sock.settimeout(TIMEOUT)  # Sử dụng timeout 90s
             sock.send(data_bytes)
         except socket.timeout:
-            raise Exception("Send timeout")
+            raise Exception(f"Send timeout after {TIMEOUT}s")
     else:
         sock.send(data)
 
 def recv(sock: socket.socket, is_binary=False, buffer_size=DEFAULT_BUFFER_SIZE):
     try:
         # Thêm timeout khi nhận
-        sock.settimeout(10)
+        sock.settimeout(TIMEOUT)  # Sử dụng timeout 90s
         data = sock.recv(buffer_size)
         if not is_binary:
             data_dict = json.loads(data.decode('utf-8'))
@@ -51,7 +51,7 @@ def recv(sock: socket.socket, is_binary=False, buffer_size=DEFAULT_BUFFER_SIZE):
             return decoded_data
         return data
     except socket.timeout:
-        raise Exception("Receive timeout")
+        raise Exception(f"Receive timeout after {TIMEOUT}s")
 
 
 # Message types for communication between peers

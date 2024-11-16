@@ -119,19 +119,25 @@ class Tracker:
 
 if __name__ == "__main__":
     default_ip = os.getenv('HOST', '127.0.0.1') 
-    port = int(os.getenv('PORT', 10000))  # Đổi default port thành 10000
+    port = int(os.getenv('PORT', 10000))
+    is_production = os.getenv('ENVIRONMENT') == 'production'
 
     tracker = Tracker(default_ip, port)
     tracker_thread = Thread(target=tracker.start)
     tracker_thread.start()
     
     try:
-        while True:
-            cmd = input("Enter command: ")
-            if cmd == "stop":
-                tracker.stop()
-                tracker_thread.join()
-                break
+        if is_production:
+            # Trong môi trường production (Render), chỉ chạy tracker
+            tracker_thread.join()
+        else:
+            # Trong môi trường development, cho phép nhập lệnh
+            while True:
+                cmd = input("Enter command: ")
+                if cmd == "stop":
+                    tracker.stop()
+                    tracker_thread.join()
+                    break
     except KeyboardInterrupt:
         print("\nShutting down tracker...")
         tracker.stop()
